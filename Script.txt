@@ -1,0 +1,166 @@
+﻿--------------- CREATE PERMANENT TABLESPACE: dùng để lưu trữ dữ liệu trong database
+
+CREATE TABLESPACE tbs_perm_01
+  DATAFILE 'tbs_perm_01.dat' 
+    SIZE 500M
+  ONLINE;
+  
+CREATE TABLESPACE tbs_perm_02
+  DATAFILE 'tbs_perm_02.dat' 
+    SIZE 400M
+  ONLINE;
+
+--------------- CREATE TEMPORARY TABLESPACE: được sử dụng để dành riêng cho các thao tác sắp xếp dữ liệu
+
+CREATE TEMPORARY TABLESPACE tbs_temp_01
+  TEMPFILE 'tbs_temp_01.dbf'
+    SIZE 500M
+    AUTOEXTEND ON;
+
+CREATE TEMPORARY TABLESPACE tbs_temp_02
+  TEMPFILE 'tbs_temp_02.dbf'
+    SIZE 400M
+    AUTOEXTEND ON;
+
+-------------- CREATE TABLE NAME IS QuanLyUser ---------------------------------------------------------
+
+create table users(
+  username varchar2(50) PRIMARY KEY not null,
+  password varchar2(50) not null,
+  email varchar2(50)
+);
+------------------ ACCOUNT STATUS ----------------------------------------------------------------------
+
+SELECT username, account_status, created, lock_date, expiry_date
+  FROM dba_users
+  WHERE username=' ';
+
+----------------- CREATE PROFILE ------------------------------------------------------------------------ 
+
+CREATE PROFILE user_1 LIMIT  
+FAILED_LOGIN_ATTEMPTS 3 	-- số lần cố gắng login thất bại
+SESSIONS_PER_USER  UNLIMITED 	-- số lượng phiên làm việc mà người dùng có thể sử dụng đồng thời
+CPU_PER_SESSION  UNLIMITED 	-- Chỉ định giới hạn thời gian CPU cho một phiên
+CPU_PER_CALL  3000 		-- Chỉ định giới hạn thời gian CPU cho một cuộc gọi, thời gian tính bằng phần trăm giây.
+CONNECT_TIME  45 		-- thời gian connect cho một session giới hạn trong vòng 45 phút
+IDLE_TIME   5 			-- Lượng thời gian nhàn rỗi cho session của user, thời gian tính bằng phút
+LOGICAL_READS_PER_SESSION DEFAULT -- Chỉ định số khối dữ liệu được phép đọc trong một phiên, bao gồm các khối đọc từ bộ nhớ và đĩa.
+LOGICAL_READS_PER_CALL 1000; 	-- Chỉ định số khối dữ liệu được phép đọc cho một cuộc gọi để xử lý câu lệnh SQL
+
+---------------- DELETE PROFILE -------------------------------------------------------------------------
+
+DROP PROFILE user_1 CASCADE;
+
+---------------- CHANGE PROFILE -------------------------------------------------------------------------
+
+ALTER PROFILE user_1 LIMIT 
+FAILED_LOGIN_ATTEMPTS 4
+IDLE_TIME   6
+CONNECT_TIME  50
+SESSIONS_PER_USER 10;
+
+---------------- ASSIGN PROFILE -------------------------------------------------------------------------
+
+CREATE USER user_test_01 IDENTIFIED BY 123
+TEMPORARY TABLESPACE tbs_temp_01
+DEFAULT TABLESPACE tbs_perm_01
+QUOTA 100M ON tbs_perm_01
+PROFILE user_1; 		-- gán profile tên 'user1' ngay khi tạo user_test_01 
+
+---------------- DROP USER ------------------------------------------------------------------------------
+
+DROP USER USER_TEST_1 CASCADE;
+
+---------------- GRANT ROLE FOR ADMIN -------------------------------------------------------------------
+
+- System role: Gán quyền hệ thống (WITH ADMIN OPTION user được cấp quyền này có thể cấp quyền hệ thống 
+cho các user khác các quyền mà nó có)
+
+GRANT CREATE PROFILE, ALTER PROFILE, DROP PROFILE,
+      CREATE ROLE, ALTER ANY ROLE, DROP ANY ROLE, GRANT ANY ROLE,
+      CREATE SESSION, CREATE ANY TABLE, ALTER ANY TABLE, DROP ANY TABLE,
+      SELECT ANY TABLE, DELETE ANY TABLE, INSERT ANY TABLE, UPDATE ANY TABLE,
+      CREATE TABLE, CREATE USER, ALTER USER, DROP USER 
+TO user_test_01 WITH ADMIN OPTION;
+
+- Object privilege: Gán quyền đối tượng 
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON QUANLYUSER TO user_test_01 WITH GRANT OPTION; (WITH GRANT OPTION 
+tương tự như WITH ADMIN OPTION nhưng áp dụng cho quyền đối tượng)
+
+-------------- CREATE ROLE FOR USER ------------------------------------------------------------------------
+No password:
+CREATE ROLE ROLE1;
+
+GRANT CREATE SESSION, ALTER PROFILE TO ROLE1;	-- Cấp quyền cho role vừa tạo
+GRANT SELECT, UPDATE ON QUANLYUSER TO ROLE1
+
+GRANT USER_ROLE1 TO user_test_02;			-- Cấp role vừa tạo cho user
+
+With Password:
+CREATE ROLE ROLE2 IDENTIFIED BY 123;
+
+GRANT CREATE SESSION, ALTER PROFILE TO ROLE2 WITH ADMIN OPTION; -- Cấp quyền cho role vừa tạo
+GRANT ROLE1 TO user_test_03;				     -- Cấp role vừa tạo cho user
+
+Change Password:
+
+ALTER ROLE ROLE2 IDENTIFIED BY newpassword;
+-------------- REVOKE ROLE ----------------------------------------------------------------------------------
+ 
+- System role:
+
+REVOKE ALTER PROFILE FROM user_test_02;
+
+- Object role:
+
+REVOKE SELECT ON USER_TABLE FROM user_test_02;
+
+------------- TABLE QUẢN LÝ QUYỀN
+
+SELECT d.GRANTEE, d.PRIVILEGE, d.ADMIN_OPTION, u.USERNAME
+from user_sys_privs u FULL OUTER JOIN dba_sys_privs d ON u.PRIVILEGE=d.PRIVILEGE
+WHERE d.GRANTEE NOT IN ('SYS','SYSTEM','DV_REALM_OWNER','EM_EXPRESS_ALL','DV_REALM_RESOURCE','EXP_FULL_DATABASE',
+'GSMADMIN_ROLE','GSMUSER','IMP_FULL_DATABASE','DVSYS','DV_ACCTMGR','EM_EXPRESS_BASIC','GGSYS','GSMADMIN_INTERNAL',
+'JAVADEBUGPRIV','MDSYS','LBACSYS','OEM_ADVISOR','OLAP_DBA','OJVMSYS','OLAP_USER','OUTLN','ORDSYS','RECOVERY_CATALOG_OWNER',
+'SCHEDULER_ADMIN','WMSYS','XDB','XS_CONNECT','AQ_ADMINISTRATOR_ROLE','APPQOSSYS','OEM_MONITOR','DATAPUMP_IMP_FULL_DATABASE',
+'SPATIAL_CSW_ADMIN_USR','SYSBACKUP','SYSDG','SYSKM','RECOVERY_CATALOG_OWNER_VPD','RESOURCE','SI_INFORMTN_SCHEMA','CTXSYS',
+'SYSRAC','DATAPUMP_EXP_FULL_DATABASE')
+ORDER BY d.GRANTEE;
+
+------------- TABLE QUẢN LÝ PROFILE
+
+SELECT U.USERNAME, S.PROFILE, U.ACCOUNT_STATUS, S.RESOURCE_NAME
+FROM DBA_USERS U LEFT OUTER JOIN DBA_PROFILES S ON S.PROFILE = U.PROFILE
+WHERE U.USERNAME NOT IN ('ANONYMOUS','APPQOSSYS','APPQOSSYS','APPQOSSYS','DBSFWUSER','DBSNMP','DIP','DVF','DVSYS','GGSYS','GSMADMIN_INTERNAL',
+'GSMCATUSER','GSMUSER','LBACSYS','MDDATA','MDSYS','OJVMSYS','OLAPSYS','ORACLE_OCM','ORDDATA','ORDPLUGINS','WMSYS','XDB','XS$NULL','CTXSYS',
+'OUTLN','ORDSYS','REMOTE_SCHEDULER_AGENT','SYSTEM','SYSKM','SYSRAC','AUDSYS','PDBADMIN','SYS$UMF','SYSBACKUP','SYS','SYSDG')
+ORDER BY USERNAME;
+
+------------- TABLE QUẢN LÝ ROLE
+
+Select a.grantee User_name, a.granted_role role, b.privilege from DBA_ROLE_PRIVS a, DBA_SYS_PRIVS b where
+a.granted_role=b.grantee and a.GRANTED_ROLE NOT IN ('SYS','IMP_FULL_DATABASE','EXP_FULL_DATABASE','CONNECT','DATAPUMP_IMP_FULL_DATABASE',
+'IMP_FULL_DATABASE','EM_EXPRESS_ALL','AQ_ADMINISTRATOR_ROLE','RESOURCE','OLAP_DBA','CTXAPP') 
+ORDER BY a.GRANTEE DESC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
