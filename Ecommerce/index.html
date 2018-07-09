@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Ecommerce site</title>
+		<link href = "css/angular-material.min.css" rel = "stylesheet">
+		<link href = "css/style.css" rel = "stylesheet">
+		<script src = "scripts/lib/angular.min.js"></script>
+		<script src = "scripts/lib/angular-animate.min.js"></script>
+		<script src = "scripts/lib/angular-aria.min.js"></script>
+		<script src = "scripts/lib/angular-material.min.js"></script>
+		<script src = "scripts/lib/angular-messages.min.js"></script>
+		<script src = "scripts/lib/angular-route.min.js"></script>
+		<script src = "scripts/App.js"></script>
+		<script src = "scripts/controller/MainPageController.js"></script>
+	</head>
+	<body ng-app = "EcommerceModule">
+		<div layout = "column">
+			<header md-colors = "{background: 'Indigo'}">
+				<div id = "heading" layout = "row" class="md-padding" layout-align = "start center">
+					<a href = "/">
+						<image src = "resources/image/lazada.png" alt = "lazada" 
+						style = "width:200px;height:60px"></image>
+					</a>
+					<md-input-container class = "md-block" flex = "50">
+						<label>search keyword</label>
+						<input id = "searchinput" type = "text" model = "keyword">
+					</md-input-container>
+					<md-button>Shopping cart</md-button>
+				</div>
+			</header>
+			<main ng-view></main>
+			<footer>
+			
+			</footer>
+		</div>
+	</body>
+</html>

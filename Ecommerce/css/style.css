@@ -1,0 +1,16 @@
+#heading a {
+	width: 300px;
+	height: 50px
+}
+#heading md-input-container label {
+	font-size: 19px;
+}
+#heading md-input-container input {
+	background-color: white;
+	height: 40px;
+	font-size: 20px
+}
+#heading md-input-container {
+	margin-top : 35px; 
+	margin-bottom : 10px; 
+}
